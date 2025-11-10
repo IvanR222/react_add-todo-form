@@ -10,6 +10,7 @@ export const App: React.FC = () => {
   const initialTodos: Todo[] = todosFromServer
     .map(t => {
       const user = usersFromServer.find(u => u.id === t.userId);
+
       return user ? { ...t, user } : null;
     })
     .filter((x): x is Todo => x !== null);
@@ -47,6 +48,7 @@ export const App: React.FC = () => {
     if (!user) {
       // Shouldn't normally happen, but guard against it
       setUserError('Selected user not found');
+
       return;
     }
 
@@ -79,7 +81,7 @@ export const App: React.FC = () => {
             onChange={event => {
               setTitle(event.target.value);
               if (titleError) {
-                setTitle('');
+                setTitleError('');
               }
             }}
             placeholder="Enter title"
