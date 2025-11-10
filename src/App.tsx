@@ -3,39 +3,29 @@ import './App.scss';
 import usersFromServer from './api/users';
 import todosFromServer from './api/todos';
 import { TodoList } from './components/TodoList';
-
-interface User {
-  id: number;
-  name: string;
-  username: string;
-  email: string;
-}
-
-interface Todo {
-  id: number;
-  title: string;
-  completed: boolean;
-  userId: number;
-  user: User;
-}
+import { Todo } from './types';
 
 export const App: React.FC = () => {
-  const [todos, setTodos] = useState<Todo[]>(
-    todosFromServer.map(todo => ({
-      ...todo,
-      user: usersFromServer.find(u => u.id === todo.userId) as User
-    }))
-  );
+  // Attach user objects to initial todos, but skip todos without a matching user to avoid runtime errors
+  const initialTodos: Todo[] = todosFromServer
+    .map(t => {
+      const user = usersFromServer.find(u => u.id === t.userId);
+      return user ? { ...t, user } : null;
+    })
+    .filter((x): x is Todo => x !== null);
+
+  const [todos, setTodos] = useState<Todo[]>(initialTodos);
 
   const [title, setTitle] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [titleError, setTitleError] = useState('');
   const [userError, setUserError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
 
     let hasError = false;
+
     if (!title.trim()) {
       setTitleError('Please enter a title');
       hasError = true;
@@ -46,11 +36,19 @@ export const App: React.FC = () => {
       hasError = true;
     }
 
-    if (hasError) return;
+    if (hasError) {
+      return;
+    }
 
     const maxId = Math.max(...todos.map(t => t.id), 0);
     const userId = Number(selectedUserId);
-    const user = usersFromServer.find(u => u.id === userId) as User;
+    const user = usersFromServer.find(u => u.id === userId);
+
+    if (!user) {
+      // Shouldn't normally happen, but guard against it
+      setUserError('Selected user not found');
+      return;
+    }
 
     const newTodo: Todo = {
       id: maxId + 1,
@@ -78,9 +76,11 @@ export const App: React.FC = () => {
             type="text"
             data-cy="titleInput"
             value={title}
-            onChange={e => {
-              setTitle(e.target.value);
-              if (titleError) setTitleError('');
+            onChange={event => {
+              setTitle(event.target.value);
+              if (titleError) {
+                setTitle('');
+              }
             }}
             placeholder="Enter title"
           />
@@ -91,9 +91,11 @@ export const App: React.FC = () => {
           <select
             data-cy="userSelect"
             value={selectedUserId}
-            onChange={e => {
-              setSelectedUserId(e.target.value);
-              if (userError) setUserError('');
+            onChange={event => {
+              setSelectedUserId(event.target.value);
+              if (userError) {
+                setUserError('');
+              }
             }}
           >
             <option value="">Choose a user</option>
